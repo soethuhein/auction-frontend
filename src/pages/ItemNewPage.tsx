@@ -27,6 +27,11 @@ export function ItemNewPage() {
   const [attributesJson, setAttributesJson] = useState('{ "version": "1.0" }')
 
   useEffect(() => {
+    if (!accessToken) {
+      navigate({ to: '/auth/login' })
+      return
+    }
+
     let mounted = true
     ;(async () => {
       try {
@@ -39,7 +44,7 @@ export function ItemNewPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [accessToken, navigate])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,6 +76,14 @@ export function ItemNewPage() {
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create item')
     }
+  }
+
+  if (!accessToken) {
+    return (
+      <div className="rounded border border-gray-200 bg-white p-6 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400">
+        Redirecting to login…
+      </div>
+    )
   }
 
   return (

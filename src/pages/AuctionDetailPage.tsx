@@ -111,16 +111,23 @@ export function AuctionDetailPage() {
             })
             setServerOffsetMs(offset)
           }
-          setAuction((prev: any) => {
-            if (!prev) return prev
-            return {
-              ...prev,
-              status: event.status ?? 'active',
-              start_time: event.start_time,
-              end_time: event.end_time,
-              current_price: event.current_price,
-            }
-          })
+          // Replace with full API payload so status, prices, and bids stay in sync with server.
+          void getAuction(accessToken, auctionId)
+            .then((res) => {
+              setAuction(res)
+            })
+            .catch(() => {
+              setAuction((prev: any) => {
+                if (!prev) return prev
+                return {
+                  ...prev,
+                  status: event.status ?? 'active',
+                  start_time: event.start_time ?? prev.start_time,
+                  end_time: event.end_time ?? prev.end_time,
+                  current_price: event.current_price ?? prev.current_price,
+                }
+              })
+            })
           return
         }
 
@@ -137,10 +144,14 @@ export function AuctionDetailPage() {
         }
 
         if (event.type === 'auction_ended') {
-          setAuction((prev: any) => {
-            if (!prev) return prev
-            return { ...prev, status: 'ended' }
-          })
+          void getAuction(accessToken, auctionId)
+            .then((res) => setAuction(res))
+            .catch(() => {
+              setAuction((prev: any) => {
+                if (!prev) return prev
+                return { ...prev, status: 'ended' }
+              })
+            })
         }
       } catch {
         // ignore malformed WS messages
@@ -150,13 +161,46 @@ export function AuctionDetailPage() {
     return () => {
       ws.close()
     }
-  }, [auctionId])
+  }, [auctionId, accessToken])
 
-  const remainingMs = (() => {
-    if (!auction?.end_time) return null
-    const endMs = Date.parse(auction.end_time)
-    if (serverOffsetMs === null) return endMs - nowMs
-    return endMs - (nowMs + serverOffsetMs)
+  /** Align with server clock when we have a WS-derived offset (bid/start events). */
+  const effectiveNowMs =
+    serverOffsetMs === null ? nowMs : nowMs + serverOffsetMs
+
+  /**
+   * Scheduled (before start): countdown to start_time.
+   * Active (or scheduled past start until backend flips): countdown to end_time (auction duration).
+   */
+  const countdown = (() => {
+    if (!auction) return null
+    const status = auction.status as string
+    if (status === 'ended' || status === 'cancelled') {
+      return { label: status === 'ended' ? 'Auction ended' : 'Cancelled', ms: null as number | null }
+    }
+
+    const startMs = auction.start_time ? Date.parse(auction.start_time) : NaN
+    const endMs = auction.end_time ? Date.parse(auction.end_time) : NaN
+
+    if (status === 'scheduled' && Number.isFinite(startMs)) {
+      if (effectiveNowMs < startMs) {
+        return { label: 'Starts in', ms: startMs - effectiveNowMs }
+      }
+      // Start time passed but status still "scheduled" (short lag) — show time left in the window.
+      if (Number.isFinite(endMs)) {
+        return { label: 'Time left', ms: endMs - effectiveNowMs }
+      }
+    }
+
+    if (status === 'active' && Number.isFinite(endMs)) {
+      return { label: 'Time left', ms: endMs - effectiveNowMs }
+    }
+
+    // Fallback: any status with end_time (e.g. edge cases)
+    if (Number.isFinite(endMs) && (status === 'scheduled' || status === 'active')) {
+      return { label: 'Time left', ms: endMs - effectiveNowMs }
+    }
+
+    return null
   })()
 
   const canBid = auction?.status === 'active'
@@ -280,9 +324,19 @@ export function AuctionDetailPage() {
               ? new Date(auction.end_time).toLocaleString()
               : '—'}
           </div>
-          {remainingMs !== null ? (
+          {countdown ? (
             <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
-              Countdown: {formatMs(remainingMs)}
+              {countdown.ms === null ? (
+                <span>{countdown.label}</span>
+              ) : countdown.ms <= 0 ? (
+                <span>
+                  {auction.status === 'scheduled' ? 'Starting…' : 'Ended'}
+                </span>
+              ) : (
+                <span>
+                  {countdown.label}: {formatMs(countdown.ms)}
+                </span>
+              )}
             </div>
           ) : null}
         </section>

@@ -21,7 +21,7 @@ export function LoginPage() {
       const res = await loginUser({ email, password })
       setAccessToken(res.access)
       setRefreshToken(res.refresh)
-      navigate({ to: '/' })
+      navigate({ to: '/', search: { category: undefined } })
     } catch (err: any) {
       setError(err?.message ?? 'Login failed')
     } finally {

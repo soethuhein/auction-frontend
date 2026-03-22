@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
+import { getMe } from './api/rest'
 import { AuthStatusBar } from './auth/AuthStatusBar'
+import { useAuth } from './auth/AuthContext'
+import { DEFAULT_BROWSE_SEARCH } from './browseSearchDefaults'
 
 const navLinkClass =
   'rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors ' +
@@ -17,8 +20,29 @@ const mobileNavLinkClass =
   'dark:data-[status=active]:bg-blue-950/40 dark:data-[status=active]:text-blue-300'
 
 export function RootLayout() {
+  const { accessToken } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const closeMenu = () => setMenuOpen(false)
+
+  useEffect(() => {
+    if (!accessToken) {
+      setIsAdmin(false)
+      return
+    }
+    let mounted = true
+    ;(async () => {
+      try {
+        const me = await getMe(accessToken)
+        if (mounted) setIsAdmin(Boolean(me?.is_superuser || me?.is_staff))
+      } catch {
+        if (mounted) setIsAdmin(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [accessToken])
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
@@ -30,6 +54,7 @@ export function RootLayout() {
           {/* Brand */}
           <Link
             to="/"
+            search={{ category: undefined }}
             activeOptions={{ exact: true }}
             className="flex shrink-0 items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="BidSphere home"
@@ -43,10 +68,19 @@ export function RootLayout() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-0.5 md:flex" aria-label="Main navigation">
-            <Link to="/" activeOptions={{ exact: true }} className={navLinkClass}>Dashboard</Link>
-            <Link to="/items" className={navLinkClass}>Items</Link>
-            <Link to="/auctions/my" className={navLinkClass}>My Auctions</Link>
-            <Link to="/admin" className={navLinkClass}>Admin</Link>
+            <Link to="/auctions/browse" search={DEFAULT_BROWSE_SEARCH} className={navLinkClass}>
+              Browse
+            </Link>
+            {accessToken && (
+              <>
+                {/* <Link to="/" search={{ category: undefined }} activeOptions={{ exact: true }} className={navLinkClass}>Home</Link> */}
+                <Link to="/items" className={navLinkClass}>Items</Link>
+                <Link to="/auctions/my" className={navLinkClass}>My Auctions</Link>
+                {isAdmin ? (
+                  <Link to="/admin" className={navLinkClass}>Admin</Link>
+                ) : null}
+              </>
+            )}
           </nav>
 
           {/* Desktop auth + mobile hamburger */}
@@ -89,10 +123,19 @@ export function RootLayout() {
             className="border-t border-gray-100 px-4 pb-4 pt-2 md:hidden dark:border-gray-800"
           >
             <nav className="flex flex-col gap-0.5" aria-label="Mobile navigation">
-              <Link to="/" activeOptions={{ exact: true }} className={mobileNavLinkClass} onClick={closeMenu}>Dashboard</Link>
-              <Link to="/items" className={mobileNavLinkClass} onClick={closeMenu}>Items</Link>
-              <Link to="/auctions/my" className={mobileNavLinkClass} onClick={closeMenu}>My Auctions</Link>
-              <Link to="/admin" className={mobileNavLinkClass} onClick={closeMenu}>Admin</Link>
+              <Link to="/auctions/browse" search={DEFAULT_BROWSE_SEARCH} className={mobileNavLinkClass} onClick={closeMenu}>
+                Browse
+              </Link>
+              {accessToken && (
+                <>
+                  <Link to="/" search={{ category: undefined }} activeOptions={{ exact: true }} className={mobileNavLinkClass} onClick={closeMenu}>Home</Link>
+                  <Link to="/items" className={mobileNavLinkClass} onClick={closeMenu}>Items</Link>
+                  <Link to="/auctions/my" className={mobileNavLinkClass} onClick={closeMenu}>My Auctions</Link>
+                  {isAdmin ? (
+                    <Link to="/admin" className={mobileNavLinkClass} onClick={closeMenu}>Admin</Link>
+                  ) : null}
+                </>
+              )}
             </nav>
             <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
               <AuthStatusBar />

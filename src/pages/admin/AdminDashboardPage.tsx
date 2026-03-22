@@ -1,6 +1,41 @@
-import { Link } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { useAuth } from '../../app/auth/AuthContext'
+import { getMe } from '../../app/api/rest'
 
 export function AdminDashboardPage() {
+  const { accessToken } = useAuth()
+  const navigate = useNavigate()
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!accessToken) {
+        navigate({ to: '/auth/login' })
+        return
+      }
+      try {
+        const me = await getMe(accessToken)
+        const admin = Boolean(me?.is_superuser || me?.is_staff)
+        if (mounted) setIsAdmin(admin)
+        if (mounted && !admin) navigate({ to: '/', search: { category: undefined } })
+      } catch {
+        if (mounted) navigate({ to: '/auth/login' })
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [accessToken, navigate])
+
+  if (isAdmin === null) {
+    return <div className="text-sm text-gray-600">Checking admin access...</div>
+  }
+
+  if (!isAdmin) return null
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Admin Dashboard</h1>

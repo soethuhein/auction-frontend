@@ -99,10 +99,52 @@ export async function getAuction(accessToken: string | null, auctionId: string) 
   })
 }
 
-export async function listAuctions() {
+export type ListAuctionsParams = {
+  category?: string | number
+  /** Search item title / description (DRF `search`) */
+  search?: string
+  status?: string
+  end_after?: string
+  end_before?: string
+  start_after?: string
+  start_before?: string
+  ordering?: string
+  page?: number
+}
+
+export async function listAuctions(params?: ListAuctionsParams) {
+  const sp = new URLSearchParams()
+  if (params?.category != null && String(params.category) !== '') {
+    sp.set('category', String(params.category))
+  }
+  if (params?.search?.trim()) {
+    sp.set('search', params.search.trim())
+  }
+  if (params?.status) {
+    sp.set('status', params.status)
+  }
+  if (params?.end_after) {
+    sp.set('end_after', params.end_after)
+  }
+  if (params?.end_before) {
+    sp.set('end_before', params.end_before)
+  }
+  if (params?.start_after) {
+    sp.set('start_after', params.start_after)
+  }
+  if (params?.start_before) {
+    sp.set('start_before', params.start_before)
+  }
+  if (params?.ordering) {
+    sp.set('ordering', params.ordering)
+  }
+  if (params?.page != null && params.page > 1) {
+    sp.set('page', String(params.page))
+  }
+  const q = sp.toString()
   return apiRequest<any>({
     method: 'GET',
-    path: '/auctions/',
+    path: q ? `/auctions/?${q}` : '/auctions/',
   })
 }
 

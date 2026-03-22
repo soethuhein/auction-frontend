@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../../app/auth/AuthContext'
-import { listMyAuctions } from '../../app/api/rest'
+import { getMe, listMyAuctions } from '../../app/api/rest'
 import { AuctionCard } from '../../components/AuctionCard'
 
 export function AdminAuctionsPage() {
@@ -9,6 +9,7 @@ export function AdminAuctionsPage() {
   const navigate = useNavigate()
   const [data, setData] = useState<any | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!accessToken) {
@@ -19,6 +20,17 @@ export function AdminAuctionsPage() {
     let mounted = true
     ;(async () => {
       try {
+        const me = await getMe(accessToken)
+        const admin = Boolean(me?.is_superuser || me?.is_staff)
+        if (!admin) {
+          if (mounted) {
+            setIsAdmin(false)
+            navigate({ to: '/', search: { category: undefined } })
+          }
+          return
+        }
+        if (mounted) setIsAdmin(true)
+
         const res = await listMyAuctions(accessToken)
         if (mounted) setData(res)
       } catch (e: any) {
@@ -30,6 +42,11 @@ export function AdminAuctionsPage() {
       mounted = false
     }
   }, [accessToken, navigate])
+
+  if (isAdmin === null) {
+    return <div className="text-sm text-gray-600">Checking admin access...</div>
+  }
+  if (!isAdmin) return null
 
   const auctions = data?.results ?? []
 
