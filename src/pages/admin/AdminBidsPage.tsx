@@ -80,7 +80,7 @@ export function AdminBidsPage() {
                     params={{ auctionId: b.auction?.id ?? b.auction_id }}
                     className="text-sm text-purple-700 hover:underline"
                   >
-                    {b.auction?.item?.title ?? 'Auction'}
+                    {b.auction?.item_title ?? b.auction?.item?.title ?? 'Auction'}
                   </Link>
                 </td>
                 <td className="p-3">{b.amount}</td>

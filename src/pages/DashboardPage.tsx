@@ -27,7 +27,10 @@ export function DashboardPage() {
     let mounted = true
     ;(async () => {
       try {
-        const res = await listAuctions(category ? { category } : undefined)
+        const res = await listAuctions({
+          ...(category ? { category } : {}),
+          status: 'active',
+        })
         if (mounted) setData(res)
       } catch (e: any) {
         if (mounted) setError(e?.message ?? 'Failed to load auctions')

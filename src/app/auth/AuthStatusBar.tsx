@@ -1,8 +1,38 @@
 import { Link } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { getMe } from '../api/rest'
 import { useAuth } from './AuthContext'
 
 export function AuthStatusBar() {
   const { accessToken, clearAuth } = useAuth()
+  const [me, setMe] = useState<any | null>(null)
+
+  useEffect(() => {
+    if (!accessToken) {
+      setMe(null)
+      return
+    }
+    let mounted = true
+    ;(async () => {
+      try {
+        const user = await getMe(accessToken)
+        if (mounted) setMe(user)
+      } catch {
+        if (mounted) setMe(null)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [accessToken])
+
+  const displayName = useMemo(() => {
+    const fullName = [me?.first_name, me?.last_name].filter(Boolean).join(' ').trim()
+    if (fullName) return fullName
+    if (me?.username) return me.username
+    if (me?.email) return me.email
+    return 'Account'
+  }, [me])
 
   if (!accessToken) {
     return (
@@ -25,10 +55,13 @@ export function AuthStatusBar() {
 
   return (
     <div className="flex shrink-0 items-center gap-3">
-      <span className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+      <Link
+        to="/profile"
+        className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-700 dark:text-gray-400 dark:hover:text-blue-300"
+      >
         <span className="h-2 w-2 rounded-full bg-green-500" aria-hidden="true" />
-        Signed in
-      </span>
+        {displayName}
+      </Link>
       <button
         type="button"
         className="rounded-md border border-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"

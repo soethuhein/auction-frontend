@@ -11,7 +11,6 @@ const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
   { value: 'scheduled', label: 'Scheduled' },
   { value: 'active', label: 'Active' },
-  { value: 'ended', label: 'Ended' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
@@ -89,6 +88,7 @@ export function BrowseAuctionsPage() {
           search: apiParams.search,
           category: apiParams.category,
           status: apiParams.status,
+          exclude_status: apiParams.status ? undefined : 'ended',
           end_after: apiParams.end_after,
           end_before: apiParams.end_before,
           ordering: apiParams.ordering,

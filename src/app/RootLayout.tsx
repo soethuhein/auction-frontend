@@ -75,7 +75,10 @@ export function RootLayout() {
               <>
                 {/* <Link to="/" search={{ category: undefined }} activeOptions={{ exact: true }} className={navLinkClass}>Home</Link> */}
                 <Link to="/items" className={navLinkClass}>Items</Link>
-                <Link to="/auctions/my" className={navLinkClass}>My Auctions</Link>
+                <Link to="/auctions/new" className={navLinkClass}>New auction</Link>
+                <Link to="/auctions/my" search={{ status: 'all' }} className={navLinkClass}>My Auctions</Link>
+                <Link to="/auctions/my-bids" search={{ filter: 'all' }} className={navLinkClass}>My bids</Link>
+                <Link to="/profile" className={navLinkClass}>Profile</Link>
                 {isAdmin ? (
                   <Link to="/admin" className={navLinkClass}>Admin</Link>
                 ) : null}
@@ -130,7 +133,10 @@ export function RootLayout() {
                 <>
                   <Link to="/" search={{ category: undefined }} activeOptions={{ exact: true }} className={mobileNavLinkClass} onClick={closeMenu}>Home</Link>
                   <Link to="/items" className={mobileNavLinkClass} onClick={closeMenu}>Items</Link>
-                  <Link to="/auctions/my" className={mobileNavLinkClass} onClick={closeMenu}>My Auctions</Link>
+                  <Link to="/auctions/new" className={mobileNavLinkClass} onClick={closeMenu}>New auction</Link>
+                  <Link to="/auctions/my" search={{ status: 'all' }} className={mobileNavLinkClass} onClick={closeMenu}>My Auctions</Link>
+                  <Link to="/auctions/my-bids" search={{ filter: 'all' }} className={mobileNavLinkClass} onClick={closeMenu}>My bids</Link>
+                  <Link to="/profile" className={mobileNavLinkClass} onClick={closeMenu}>Profile</Link>
                   {isAdmin ? (
                     <Link to="/admin" className={mobileNavLinkClass} onClick={closeMenu}>Admin</Link>
                   ) : null}

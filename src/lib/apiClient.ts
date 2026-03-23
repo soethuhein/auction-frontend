@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './env'
+
 type ApiRequestOptions = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   path: string
@@ -11,8 +13,15 @@ export function buildAuthHeaders(token?: string | null): Record<string, string> 
   return { Authorization: `Bearer ${token}` }
 }
 
+function buildApiUrl(path: string): string {
+  if (path.startsWith('http')) return path
+  const p = path.startsWith('/') ? path : `/${path}`
+  const apiPath = p.startsWith('/api') ? p : `/api${p}`
+  return API_BASE_URL ? `${API_BASE_URL}${apiPath}` : apiPath
+}
+
 export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
-  const url = options.path.startsWith('http') ? options.path : `/api${options.path.startsWith('/') ? '' : '/'}${options.path}`
+  const url = buildApiUrl(options.path)
 
   const res = await fetch(url, {
     method: options.method,

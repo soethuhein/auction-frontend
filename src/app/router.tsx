@@ -16,6 +16,9 @@ import { MyAuctionsPage } from '../pages/MyAuctionsPage'
 import { ItemsPage } from '../pages/ItemsPage'
 import { ItemNewPage } from '../pages/ItemNewPage'
 import { ItemEditPage } from '../pages/ItemEditPage'
+import { CreateAuctionDraftPage } from '../pages/CreateAuctionDraftPage'
+import { MyBidsPage } from '../pages/MyBidsPage'
+import { ProfilePage } from '../pages/ProfilePage'
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage'
 import { AdminItemsPage } from '../pages/admin/AdminItemsPage'
 import { AdminAuctionsPage } from '../pages/admin/AdminAuctionsPage'
@@ -46,6 +49,12 @@ const registerRoute = createRoute({
   component: RegisterPage,
 })
 
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  component: ProfilePage,
+})
+
 function parseBrowsePage(raw: unknown): number {
   if (typeof raw === 'number' && raw >= 1 && Number.isInteger(raw)) return raw
   if (typeof raw === 'string') {
@@ -74,7 +83,30 @@ export const browseAuctionsRoute = createRoute({
 export const myAuctionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/auctions/my',
+  validateSearch: (search: Record<string, unknown>) => ({
+    status:
+      search?.status === 'active' || search?.status === 'ended' || search?.status === 'draft'
+        ? search.status
+        : 'all',
+  }),
   component: MyAuctionsPage,
+})
+
+/** Static path; must be registered before `/auctions/$auctionId`. */
+export const myBidsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auctions/my-bids',
+  validateSearch: (search: Record<string, unknown>) => ({
+    filter: search?.filter === 'won' ? 'won' : 'all',
+  }),
+  component: MyBidsPage,
+})
+
+/** Static path; must be registered before `/auctions/$auctionId`. */
+export const createAuctionDraftRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auctions/new',
+  component: CreateAuctionDraftPage,
 })
 
 export const auctionDetailRoute = createRoute({
@@ -130,8 +162,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  profileRoute,
   browseAuctionsRoute,
   myAuctionsRoute,
+  myBidsRoute,
+  createAuctionDraftRoute,
   auctionDetailRoute,
   itemsRoute,
   itemNewRoute,

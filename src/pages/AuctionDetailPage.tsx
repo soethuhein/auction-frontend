@@ -5,10 +5,12 @@ import { auctionDetailRoute } from '../app/router'
 import {
   addToWatchlist,
   getAuction,
+  getMe,
   placeBid,
   removeFromWatchlist,
   startAuction,
 } from '../app/api/rest'
+import { getWsBaseUrl, resolveMediaUrl } from '../lib/env'
 import { computeServerTimeOffsetMs } from '../lib/timeSync'
 
 type WsBidUpdateEvent = {
@@ -32,7 +34,16 @@ type WsAuctionEndedEvent = {
   status: 'ended'
 }
 
-type WsEvent = WsBidUpdateEvent | WsAuctionStartedEvent | WsAuctionEndedEvent
+type WsViewerCountUpdateEvent = {
+  type: 'viewer_count_update'
+  viewer_count: number
+}
+
+type WsEvent =
+  | WsBidUpdateEvent
+  | WsAuctionStartedEvent
+  | WsAuctionEndedEvent
+  | WsViewerCountUpdateEvent
 
 function formatMs(ms: number) {
   const clamped = Math.max(0, ms)
@@ -44,6 +55,13 @@ function formatMs(ms: number) {
   if (d > 0) return `${d}d ${h}h ${m}m ${s}s`
   if (h > 0) return `${h}h ${m}m ${s}s`
   return `${m}m ${s}s`
+}
+
+function formatPrice(value: string | number | null | undefined): string {
+  if (value == null || value === '') return '—'
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (Number.isNaN(n)) return String(value)
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export function AuctionDetailPage() {
@@ -65,6 +83,7 @@ export function AuctionDetailPage() {
   const [bidAmount, setBidAmount] = useState('')
   const [bidBusy, setBidBusy] = useState(false)
   const [watched, setWatched] = useState(false)
+  const [viewerCount, setViewerCount] = useState<number | null>(null)
 
   // Start UI
   const [startTime, setStartTime] = useState('')
@@ -73,6 +92,26 @@ export function AuctionDetailPage() {
   const [durationMinutes, setDurationMinutes] = useState(0)
   const [startError, setStartError] = useState<string | null>(null)
   const [startBusy, setStartBusy] = useState(false)
+  const [meUserId, setMeUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!accessToken) {
+      setMeUserId(null)
+      return
+    }
+    let mounted = true
+    ;(async () => {
+      try {
+        const me = await getMe(accessToken)
+        if (mounted && me?.id != null) setMeUserId(String(me.id))
+      } catch {
+        if (mounted) setMeUserId(null)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [accessToken])
 
   useEffect(() => {
     let mounted = true
@@ -83,6 +122,7 @@ export function AuctionDetailPage() {
         if (!mounted) return
         setAuction(res)
         setServerOffsetMs(null)
+        if (res?.is_watched != null) setWatched(!!res.is_watched)
       } catch (e: any) {
         if (mounted) setError(e?.message ?? 'Failed to load auction')
       }
@@ -94,14 +134,20 @@ export function AuctionDetailPage() {
 
   useEffect(() => {
     wsRef.current?.close()
+    setViewerCount(null)
 
-    // Use 127.0.0.1 to avoid IPv6 localhost (Firefox) connectivity issues.
-    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/auctions/${auctionId}/`)
+    const wsBase = getWsBaseUrl()
+    const ws = new WebSocket(`${wsBase}/ws/auctions/${auctionId}/`)
     wsRef.current = ws
 
     ws.onmessage = (msg) => {
       try {
         const event: WsEvent = JSON.parse(msg.data)
+
+        if (event.type === 'viewer_count_update') {
+          setViewerCount(event.viewer_count)
+          return
+        }
 
         if (event.type === 'auction_started') {
           if (event.start_time) {
@@ -261,21 +307,48 @@ export function AuctionDetailPage() {
 
   if (!auction) return <div className="text-sm text-gray-600">Loading...</div>
 
+  const itemImages = auction.item?.images ?? []
+  const primaryImage = itemImages[0]
+  const isActive = auction.status === 'active'
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">{auction.item?.title}</h1>
-          <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Status: <span className="font-medium">{auction.status}</span>
-          </div>
+          {isActive && (
+            <span
+              className="inline-flex items-center gap-2 rounded-md bg-red-600 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white"
+              aria-label={`Live auction, ${viewerCount ?? 0} watching`}
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              <span>LIVE</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5 shrink-0 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+              </svg>
+              <span className="tabular-nums">{viewerCount ?? 0}</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           {accessToken ? (
             <button
-              className="rounded border border-gray-300 px-3 py-1 text-sm dark:border-gray-700"
               type="button"
+              title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
+              aria-label={watched ? 'Remove from watchlist' : 'Add to watchlist'}
+              className="rounded border border-gray-300 p-2 text-red-600 transition-colors hover:bg-red-50 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/30"
               onClick={async () => {
                 if (!accessToken) return
                 try {
@@ -287,7 +360,15 @@ export function AuctionDetailPage() {
                 }
               }}
             >
-              {watched ? 'Unwatch' : 'Watch'}
+              {watched ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-2" aria-hidden>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              )}
             </button>
           ) : (
             <Link
@@ -306,94 +387,198 @@ export function AuctionDetailPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="space-y-3 rounded border border-gray-200 p-4 dark:border-gray-800">
-          <h2 className="text-lg font-semibold">Auction</h2>
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            Starting: {auction.starting_price} <br />
-            Current: <span className="font-semibold">{auction.current_price}</span>
-          </div>
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            Start:{' '}
-            {auction.start_time
-              ? new Date(auction.start_time).toLocaleString()
-              : '—'}
-            <br />
-            End:{' '}
-            {auction.end_time
-              ? new Date(auction.end_time).toLocaleString()
-              : '—'}
-          </div>
-          {countdown ? (
-            <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
-              {countdown.ms === null ? (
-                <span>{countdown.label}</span>
-              ) : countdown.ms <= 0 ? (
-                <span>
-                  {auction.status === 'scheduled' ? 'Starting…' : 'Ended'}
-                </span>
-              ) : (
-                <span>
-                  {countdown.label}: {formatMs(countdown.ms)}
-                </span>
-              )}
-            </div>
-          ) : null}
-        </section>
+      {auction.status === 'ended' ? (
+        (() => {
+          const winner = auction.winner as { id?: string; username?: string; first_name?: string } | null
+          const hammer = formatPrice(auction.winning_price ?? auction.current_price)
+          const winnerLabel = winner
+            ? (winner.first_name?.trim() || winner.username || 'Bidder')
+            : ''
+          const iAmWinner = Boolean(
+            winner && meUserId && String(winner.id) === String(meUserId),
+          )
 
-        <section className="space-y-4 rounded border border-gray-200 p-4 dark:border-gray-800">
-          <h2 className="text-lg font-semibold">Bidding</h2>
-
-          {canBid ? (
-            <form onSubmit={onSubmitBid} className="flex gap-2">
-              <input
-                className="w-32 rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                value={bidAmount}
-                onChange={(e) => setBidAmount(e.target.value)}
-                placeholder="Amount"
-                inputMode="decimal"
-              />
-              <button
-                type="submit"
-                disabled={bidBusy}
-                className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50"
+          if (winner && iAmWinner) {
+            return (
+              <section
+                className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/40"
+                aria-live="polite"
               >
-                Place bid
-              </button>
-            </form>
+                <h2 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">You won!</h2>
+                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+                  <span className="font-medium">{auction.item?.title}</span> —{' '}
+                  <span className="font-semibold">{hammer}</span>
+                </p>
+                <p className="mt-1 text-xs text-emerald-800/90 dark:text-emerald-300/90">
+                  You had the highest bid.
+                </p>
+              </section>
+            )
+          }
+
+          if (winner && auction.is_seller) {
+            return (
+              <section
+                className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50"
+                aria-live="polite"
+              >
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Auction ended</h2>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                  Sold to <span className="font-medium">{winnerLabel}</span> for{' '}
+                  <span className="font-semibold">{hammer}</span>.
+                </p>
+              </section>
+            )
+          }
+
+          if (winner) {
+            return (
+              <section
+                className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50"
+                aria-live="polite"
+              >
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Auction ended</h2>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                  Winner: <span className="font-medium">{winnerLabel}</span>
+                </p>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                  Final price: <span className="font-semibold">{hammer}</span>
+                </p>
+              </section>
+            )
+          }
+
+          return (
+            <section
+              className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50"
+              aria-live="polite"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Auction ended</h2>
+              <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                No bids were placed on this auction.
+              </p>
+            </section>
+          )
+        })()
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        {/* Left: Item image and description */}
+        <div className="space-y-4">
+          {primaryImage?.image_url ? (
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+              <img
+                src={resolveMediaUrl(primaryImage.image_url) ?? primaryImage.image_url}
+                alt={primaryImage.alt_text || auction.item?.title || 'Item'}
+                className="h-auto w-full object-contain"
+              />
+            </div>
           ) : (
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Bidding is available only when status is <span className="font-semibold">active</span>.
+            <div className="flex aspect-video items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              No image
             </div>
           )}
+          {auction.item?.description ? (
+            <section className="rounded border border-gray-200 p-4 dark:border-gray-800">
+              <h2 className="mb-2 text-lg font-semibold">Description</h2>
+              <p className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+                {auction.item.description}
+              </p>
+            </section>
+          ) : null}
+        </div>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Recent bids</h3>
-            <div className="max-h-56 overflow-auto rounded border border-gray-200 dark:border-gray-800">
-              {(auction.bids ?? []).length ? (
-                <ul className="divide-y divide-gray-200 text-sm dark:divide-gray-800">
-                  {(auction.bids ?? []).map((b: any) => (
-                    <li key={b.id} className="flex items-center justify-between p-2">
-                      <span>
-                        {b.bidder?.username ?? 'user'}: {b.amount}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {b.created_at ? new Date(b.created_at).toLocaleTimeString() : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="p-3 text-sm text-gray-600 dark:text-gray-400">
-                  No bids yet.
-                </div>
-              )}
+        {/* Right: Auction info and Bidding */}
+        <div className="space-y-4">
+          <section className="space-y-3 rounded border border-gray-200 p-4 dark:border-gray-800">
+            <h2 className="text-lg font-semibold">Auction</h2>
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Start:{' '}
+              {auction.start_time
+                ? new Date(auction.start_time).toLocaleString()
+                : '—'}
+              <br />
+              End:{' '}
+              {auction.end_time
+                ? new Date(auction.end_time).toLocaleString()
+                : '—'}
             </div>
-          </div>
-        </section>
+            {countdown ? (
+              <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                {countdown.ms === null ? (
+                  <span>{countdown.label}</span>
+                ) : countdown.ms <= 0 ? (
+                  <span>
+                    {auction.status === 'scheduled' ? 'Starting…' : 'Ended'}
+                  </span>
+                ) : (
+                  <span>
+                    {countdown.label}: {formatMs(countdown.ms)}
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-4 rounded border border-gray-200 p-4 dark:border-gray-800">
+            <h2 className="text-lg font-semibold">Bidding</h2>
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Starting: {formatPrice(auction.starting_price)}
+              <br />
+              Current: <span className="font-semibold">{formatPrice(auction.current_price)}</span>
+            </div>
+
+            {canBid ? (
+              <form onSubmit={onSubmitBid} className="flex gap-2">
+                <input
+                  className="w-32 rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  placeholder="Amount"
+                  inputMode="decimal"
+                />
+                <button
+                  type="submit"
+                  disabled={bidBusy}
+                  className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50"
+                >
+                  Place bid
+                </button>
+              </form>
+            ) : (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Bidding is available only when status is <span className="font-semibold">active</span>.
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Recent bids</h3>
+              <div className="max-h-56 overflow-auto rounded border border-gray-200 dark:border-gray-800">
+                {(auction.bids ?? []).length ? (
+                  <ul className="divide-y divide-gray-200 text-sm dark:divide-gray-800">
+                    {(auction.bids ?? []).map((b: any) => (
+                      <li key={b.id} className="flex items-center justify-between p-2">
+                        <span>
+                          {b.bidder?.username ?? 'user'}: {formatPrice(b.amount)}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {b.created_at ? new Date(b.created_at).toLocaleTimeString() : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="p-3 text-sm text-gray-600 dark:text-gray-400">
+                    No bids yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
-      {auction.status === 'draft' ? (
+      {auction.status === 'draft' && auction.is_seller ? (
         <section className="space-y-3 rounded border border-gray-200 p-4 dark:border-gray-800">
           <h2 className="text-lg font-semibold">Start / Schedule Auction</h2>
           {startError ? (
@@ -403,12 +588,12 @@ export function AuctionDetailPage() {
           ) : null}
 
           <form onSubmit={onStartAuction} className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1">
+            <label className="grid gap-1 min-w-0">
               <span className="text-sm text-gray-700 dark:text-gray-300">
                 start_time (optional)
               </span>
               <input
-                className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
                 type="datetime-local"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
@@ -416,39 +601,39 @@ export function AuctionDetailPage() {
               />
             </label>
 
-            <div className="grid gap-3 sm:grid-cols-3 sm:items-end">
-              <label className="grid gap-1">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-3 sm:items-end">
+              <label className="grid min-w-0 gap-1">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   days
                 </span>
                 <input
                   type="number"
                   min={0}
-                  className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
                   value={durationDays}
                   onChange={(e) => setDurationDays(Number(e.target.value))}
                 />
               </label>
-              <label className="grid gap-1">
+              <label className="grid min-w-0 gap-1">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   hours
                 </span>
                 <input
                   type="number"
                   min={0}
-                  className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
                   value={durationHours}
                   onChange={(e) => setDurationHours(Number(e.target.value))}
                 />
               </label>
-              <label className="grid gap-1">
+              <label className="grid min-w-0 gap-1">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   minutes
                 </span>
                 <input
                   type="number"
                   min={0}
-                  className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
                 />

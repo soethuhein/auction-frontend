@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../app/auth/AuthContext'
 import {
-  createAuctionDraft,
   deleteItemImage,
   getItem,
   listItemImages,
@@ -28,19 +27,9 @@ export function ItemEditPage() {
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState<string>('') // integer from backend
 
-  const [platform, setPlatform] = useState('')
-  const [region, setRegion] = useState('')
-  const [language, setLanguage] = useState('')
-  const [licenseType, setLicenseType] = useState('')
-  const [deliveryMethod, setDeliveryMethod] = useState('')
-  const [attributesJson, setAttributesJson] = useState('{}')
-
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadAlt, setUploadAlt] = useState('')
   const [uploadSort, setUploadSort] = useState<number>(0)
-
-  const [auctionPrice, setAuctionPrice] = useState('100.00')
-  const [reservePrice, setReservePrice] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -62,12 +51,6 @@ export function ItemEditPage() {
         setTitle(it.title ?? '')
         setDescription(it.description ?? '')
         setCategoryId(it.category ? String(it.category.id) : '')
-        setPlatform(it.platform ?? '')
-        setRegion(it.region ?? '')
-        setLanguage(it.language ?? '')
-        setLicenseType(it.license_type ?? '')
-        setDeliveryMethod(it.delivery_method ?? '')
-        setAttributesJson(JSON.stringify(it.attributes ?? {}, null, 2))
       } catch (e: any) {
         if (mounted) setError(e?.message ?? 'Failed to load item')
       }
@@ -83,26 +66,17 @@ export function ItemEditPage() {
     if (!accessToken) return
     setError(null)
 
-    let attributes: any = {}
     try {
-      attributes = attributesJson.trim() ? JSON.parse(attributesJson) : {}
-    } catch {
-      setError('attributes must be valid JSON')
-      return
-    }
-
-    try {
+      const attrs =
+        item?.attributes && typeof item.attributes === 'object' && !Array.isArray(item.attributes)
+          ? item.attributes
+          : {}
       const updated = await updateItem(accessToken, itemId, {
         item_type: itemType,
         title,
         description,
         category_id: categoryId ? Number(categoryId) : null,
-        attributes,
-        platform,
-        region,
-        language,
-        license_type: licenseType,
-        delivery_method: deliveryMethod,
+        attributes: attrs,
       })
       setItem(updated)
       navigate({ to: '/items/$itemId', params: { itemId } })
@@ -140,22 +114,6 @@ export function ItemEditPage() {
       setImages(imgs)
     } catch (err: any) {
       setError(err?.message ?? 'Failed to delete image')
-    }
-  }
-
-  async function onCreateAuctionDraft() {
-    if (!accessToken) return
-    setError(null)
-    try {
-      const payload: any = {
-        item_id: itemId,
-        starting_price: auctionPrice,
-      }
-      if (reservePrice.trim()) payload.reserve_price = reservePrice.trim()
-      const created = await createAuctionDraft(accessToken, payload)
-      navigate({ to: '/auctions/$auctionId', params: { auctionId: created.id } })
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to create auction')
     }
   }
 
@@ -230,73 +188,19 @@ export function ItemEditPage() {
           />
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Platform
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Region
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Language
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              License type
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={licenseType}
-              onChange={(e) => setLicenseType(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <label className="grid gap-1">
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            Delivery method
-          </span>
-          <input
-            className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-            value={deliveryMethod}
-            onChange={(e) => setDeliveryMethod(e.target.value)}
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            Attributes (JSON)
-          </span>
-          <textarea
-            className="min-h-[100px] rounded border border-gray-300 px-3 py-2 font-mono text-xs dark:border-gray-700 dark:bg-gray-800"
-            value={attributesJson}
-            onChange={(e) => setAttributesJson(e.target.value)}
-          />
-        </label>
+        <details className="rounded border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/40">
+          <summary className="cursor-pointer font-medium text-gray-800 dark:text-gray-200">
+            Tips: optional metadata for listings (API / future UI)
+          </summary>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Common <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">attributes</code> keys include:{' '}
+            <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">condition</code>, <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">brand</code>,{' '}
+            <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">model</code>, <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">year</code>,{' '}
+            <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">location</code>, <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">warranty</code>,{' '}
+            <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">includes</code>. For digital: <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">delivery</code>,{' '}
+            <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">region_lock</code>. Existing saved attributes are kept when you save edits.
+          </p>
+        </details>
 
         <button
           type="submit"
@@ -377,43 +281,6 @@ export function ItemEditPage() {
             </div>
           ) : null}
         </div>
-      </section>
-
-      <section className="space-y-3 rounded border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-lg font-semibold">Create Auction Draft</h2>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Starting price
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={auctionPrice}
-              onChange={(e) => setAuctionPrice(e.target.value)}
-              type="text"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Reserve price (optional)
-            </span>
-            <input
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-              value={reservePrice}
-              onChange={(e) => setReservePrice(e.target.value)}
-              type="text"
-            />
-          </label>
-        </div>
-
-        <button
-          className="rounded bg-purple-600 px-4 py-2 text-white"
-          type="button"
-          onClick={onCreateAuctionDraft}
-        >
-          Create draft auction
-        </button>
       </section>
     </div>
   )

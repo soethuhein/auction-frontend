@@ -43,10 +43,17 @@ export async function listMyAuctions(accessToken: string) {
   })
 }
 
-export async function listMyBids(accessToken: string) {
+export async function listMyBids(
+  accessToken: string,
+  params?: { won?: boolean; page?: number },
+) {
+  const sp = new URLSearchParams()
+  if (params?.won) sp.set('won', 'true')
+  if (params?.page != null && params.page > 1) sp.set('page', String(params.page))
+  const q = sp.toString()
   return apiRequest<any>({
     method: 'GET',
-    path: '/auth/me/bids/',
+    path: q ? `/auth/me/bids/?${q}` : '/auth/me/bids/',
     token: accessToken,
   })
 }
@@ -104,6 +111,7 @@ export type ListAuctionsParams = {
   /** Search item title / description (DRF `search`) */
   search?: string
   status?: string
+  exclude_status?: string
   end_after?: string
   end_before?: string
   start_after?: string
@@ -122,6 +130,9 @@ export async function listAuctions(params?: ListAuctionsParams) {
   }
   if (params?.status) {
     sp.set('status', params.status)
+  }
+  if (params?.exclude_status) {
+    sp.set('exclude_status', params.exclude_status)
   }
   if (params?.end_after) {
     sp.set('end_after', params.end_after)

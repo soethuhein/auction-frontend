@@ -34,14 +34,22 @@ export function ItemsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">My Items</h1>
-        <Link
-          to="/items/new"
-          className="rounded bg-purple-600 px-3 py-2 text-sm text-white"
-        >
-          Create item
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/auctions/new"
+            className="rounded border border-purple-600 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50 dark:border-purple-500 dark:text-purple-300 dark:hover:bg-purple-950/40"
+          >
+            Create draft auction
+          </Link>
+          <Link
+            to="/items/new"
+            className="rounded bg-purple-600 px-3 py-2 text-sm text-white"
+          >
+            Create item
+          </Link>
+        </div>
       </div>
 
       {error ? (
