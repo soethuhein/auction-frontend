@@ -58,8 +58,18 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onClear = () => clearAuth()
+    const syncFromStorage = () => {
+      setAccessTokenState(getStoredAccessToken())
+      setRefreshTokenState(getStoredRefreshToken())
+    }
     window.addEventListener('auth:clear', onClear)
-    return () => window.removeEventListener('auth:clear', onClear)
+    window.addEventListener('auth:tokens-updated', syncFromStorage)
+    window.addEventListener('storage', syncFromStorage)
+    return () => {
+      window.removeEventListener('auth:clear', onClear)
+      window.removeEventListener('auth:tokens-updated', syncFromStorage)
+      window.removeEventListener('storage', syncFromStorage)
+    }
   }, [])
 
   const value = useMemo(
@@ -80,5 +90,21 @@ export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
+}
+
+function getStoredAccessToken(): string | null {
+  try {
+    return localStorage.getItem(ACCESS_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function getStoredRefreshToken(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY)
+  } catch {
+    return null
+  }
 }
 
