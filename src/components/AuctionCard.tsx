@@ -1,10 +1,18 @@
+import type { ReactElement } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Card } from './Card'
+
+function formatPrice(value: string | number | null | undefined): string {
+  if (value == null || value === '') return '—'
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (Number.isNaN(n)) return String(value)
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 function getStatusBadge(statusRaw: unknown): {
   label: string
   className: string
-  icon: JSX.Element
+  icon: ReactElement
 } {
   const status = typeof statusRaw === 'string' ? statusRaw.toLowerCase() : ''
 
@@ -63,7 +71,7 @@ export function AuctionCard(props: { auction: any }) {
     auction?.end_time ? new Date(auction.end_time).toLocaleString() : '—'
   const isScheduled = auction?.status === 'scheduled'
   const badge = getStatusBadge(auction?.status)
-  const price = auction?.current_price ?? auction?.starting_price
+  const price = formatPrice(auction?.current_price ?? auction?.starting_price)
   const images = auction?.item?.images
   const firstImage = Array.isArray(images) && images.length > 0 ? images[0] : null
   const imageUrl = firstImage?.image_url ?? null
@@ -108,9 +116,6 @@ export function AuctionCard(props: { auction: any }) {
       <div className="flex flex-col gap-3 px-4 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-              {auction?.status ?? '—'}
-            </div>
             <div className="truncate text-lg font-semibold">
               <Link
                 to="/auctions/$auctionId"

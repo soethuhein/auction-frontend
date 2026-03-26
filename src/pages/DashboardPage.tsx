@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { listAuctions, listCategories } from '../app/api/rest'
 import { AuctionCard } from '../components/AuctionCard'
+import { Card } from '../components/Card'
 import { DEFAULT_BROWSE_SEARCH } from '../app/browseSearchDefaults'
 import { indexRoute } from '../app/router'
 import heroImg from '../assets/hero.webp'
@@ -16,10 +17,13 @@ const CATEGORY_COLORS = [
   'bg-fuchsia-100 dark:bg-fuchsia-950/50',
   'bg-orange-100 dark:bg-orange-950/50',
 ]
+const ONGOING_WITH_VIEW_ALL = 5
+const UPCOMING_WITH_VIEW_ALL = 5
 
 export function DashboardPage() {
   const { category } = indexRoute.useSearch()
-  const [data, setData] = useState<any | null>(null)
+  const [ongoingData, setOngoingData] = useState<any | null>(null)
+  const [upcomingData, setUpcomingData] = useState<any | null>(null)
   const [categories, setCategories] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -27,11 +31,22 @@ export function DashboardPage() {
     let mounted = true
     ;(async () => {
       try {
-        const res = await listAuctions({
-          ...(category ? { category } : {}),
-          status: 'active',
-        })
-        if (mounted) setData(res)
+        const [ongoingRes, upcomingRes] = await Promise.all([
+          listAuctions({
+            ...(category ? { category } : {}),
+            status: 'active',
+            ordering: 'end_time',
+          }),
+          listAuctions({
+            ...(category ? { category } : {}),
+            status: 'scheduled',
+            ordering: 'start_time',
+          }),
+        ])
+        if (mounted) {
+          setOngoingData(ongoingRes)
+          setUpcomingData(upcomingRes)
+        }
       } catch (e: any) {
         if (mounted) setError(e?.message ?? 'Failed to load auctions')
       }
@@ -54,7 +69,16 @@ export function DashboardPage() {
     return () => { mounted = false }
   }, [])
 
-  const auctions = useMemo(() => data?.results ?? [], [data])
+  const ongoingAuctions = useMemo(() => ongoingData?.results ?? [], [ongoingData])
+  const upcomingAuctions = useMemo(() => upcomingData?.results ?? [], [upcomingData])
+  const ongoingPreview = useMemo(
+    () => ongoingAuctions.slice(0, ONGOING_WITH_VIEW_ALL),
+    [ongoingAuctions],
+  )
+  const upcomingPreview = useMemo(
+    () => upcomingAuctions.slice(0, UPCOMING_WITH_VIEW_ALL),
+    [upcomingAuctions],
+  )
   const activeCategory = useMemo(
     () => (category ? categories.find((c: any) => c.slug === category) : null),
     [category, categories]
@@ -80,11 +104,11 @@ export function DashboardPage() {
         <div className="relative p-6 md:p-10">
           <div
             className="absolute right-6 top-6 z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs text-gray-900 md:right-10 md:top-10"
-            aria-label={`Live auctions: ${auctions.length} items`}
+            aria-label={`Live auctions: ${ongoingAuctions.length} items`}
           >
             Live Auctions
             <span className="h-1 w-1 rounded-full bg-purple-600" aria-hidden="true" />
-            {auctions.length} items
+            {ongoingAuctions.length} items
           </div>
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl pr-36 sm:pr-40">
@@ -152,14 +176,14 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      {auctions.length === 0 ? (
+      {ongoingAuctions.length === 0 && upcomingAuctions.length === 0 ? (
         <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400">
           {category
             ? `No auctions found in ${activeCategory?.name ?? category}.`
             : 'No auctions found.'}
         </div>
       ) : (
-        <>
+        <div className="space-y-8">
           {category && (
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Showing auctions in{' '}
@@ -171,12 +195,84 @@ export function DashboardPage() {
               </Link>
             </p>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {auctions.map((a: any) => (
-              <AuctionCard key={a.id} auction={a} />
-            ))}
-          </div>
-        </>
+          {ongoingAuctions.length > 0 ? (
+            <section aria-labelledby="ongoing-auctions-heading" className="space-y-4">
+              <h2
+                id="ongoing-auctions-heading"
+                className="text-xl font-bold text-gray-900 dark:text-white"
+              >
+                Ongoing Auctions
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {ongoingPreview.map((a: any) => (
+                  <AuctionCard key={a.id} auction={a} />
+                ))}
+                <Card className="p-0">
+                  <Link
+                    to="/auctions/browse"
+                    search={{
+                      ...DEFAULT_BROWSE_SEARCH,
+                      category: category || undefined,
+                      status: 'active',
+                      ordering: 'end_time',
+                      page: 1,
+                    }}
+                    className="flex min-h-[260px] h-full w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/60 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-blue-950/20"
+                  >
+                    <span className="text-sm font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                      View all
+                    </span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">
+                      Ongoing auctions
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      See {ongoingAuctions.length} active listings
+                    </span>
+                  </Link>
+                </Card>
+              </div>
+            </section>
+          ) : null}
+
+          {upcomingAuctions.length > 0 ? (
+            <section aria-labelledby="upcoming-auctions-heading" className="space-y-4">
+              <h2
+                id="upcoming-auctions-heading"
+                className="text-xl font-bold text-gray-900 dark:text-white"
+              >
+                Upcoming Auctions
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingPreview.map((a: any) => (
+                  <AuctionCard key={a.id} auction={a} />
+                ))}
+                <Card className="p-0">
+                  <Link
+                    to="/auctions/browse"
+                    search={{
+                      ...DEFAULT_BROWSE_SEARCH,
+                      category: category || undefined,
+                      status: 'scheduled',
+                      ordering: 'start_time',
+                      page: 1,
+                    }}
+                    className="flex min-h-[260px] h-full w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-blue-500 hover:bg-blue-50/60 dark:border-gray-700 dark:hover:border-blue-400 dark:hover:bg-blue-950/20"
+                  >
+                    <span className="text-sm font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                      View all
+                    </span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">
+                      Upcoming auctions
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      See {upcomingAuctions.length} scheduled listings
+                    </span>
+                  </Link>
+                </Card>
+              </div>
+            </section>
+          ) : null}
+        </div>
       )}
     </div>
   )
