@@ -6,9 +6,7 @@ on:
 
 jobs:
   test_build:
-    runs-on: [self-hosted, linux, x64]
-    env:
-      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+    runs-on: [self-hosted, frontend]
     steps:
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -21,39 +19,17 @@ jobs:
           cd /home/auction-frontend
           git pull origin main
 
-      - name: Install deps (rolldown binding swap)
+      - name: Run frontend tests
         run: |
           set -e
           cd /home/auction-frontend
-
-          # Rolldown has OS-specific native bindings. Your repo pins the Windows binding,
-          # which breaks Linux installs. Swap it to the Linux binding for this CI run,
-          # then restore package.json/package-lock.json afterwards.
-          cp package.json package.json.bak
-          cp package-lock.json package-lock.json.bak
-
-          node - <<'NODE'
-          const fs = require('fs')
-          const path = 'package.json'
-          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'))
-          const winDep = pkg.devDependencies['@rolldown/binding-win32-x64-msvc']
-          if (!winDep) throw new Error('Missing @rolldown/binding-win32-x64-msvc in devDependencies')
-          delete pkg.devDependencies['@rolldown/binding-win32-x64-msvc']
-          pkg.devDependencies['@rolldown/binding-linux-x64-gnu'] = winDep
-          fs.writeFileSync(path, JSON.stringify(pkg, null, 2))
-          NODE
-
-          rm -rf node_modules
-          npm install
-
-          mv package.json.bak package.json
-          mv package-lock.json.bak package-lock.json
-
-      # Note: `vitest` currently fails to transform TypeScript in this environment
-      # (Rolldown TS parsing). Build still works, so we skip tests to keep CI unblocked.
+          npm test
 
       - name: Build
-        run: npm run build
+        run: |
+          set -e
+          cd /home/auction-frontend
+          npm run build
 
       - name: Deploy to nginx
         run: |
