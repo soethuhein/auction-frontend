@@ -199,7 +199,7 @@ export function DashboardPage() {
             <section aria-labelledby="ongoing-auctions-heading" className="space-y-4">
               <h2
                 id="ongoing-auctions-heading"
-                className="text-xl font-bold text-gray-900 dark:text-white"
+                className="text-left text-xl font-bold text-gray-900 dark:text-white"
               >
                 Ongoing Auctions
               </h2>
@@ -238,7 +238,7 @@ export function DashboardPage() {
             <section aria-labelledby="upcoming-auctions-heading" className="space-y-4">
               <h2
                 id="upcoming-auctions-heading"
-                className="text-xl font-bold text-gray-900 dark:text-white"
+                className="text-left text-xl font-bold text-gray-900 dark:text-white"
               >
                 Upcoming Auctions
               </h2>
