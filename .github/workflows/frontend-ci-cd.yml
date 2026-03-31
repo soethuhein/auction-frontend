@@ -19,6 +19,29 @@ jobs:
           cd /home/auction-frontend
           git pull origin main
 
+      # After `git pull`, node_modules is still whatever was installed last time. If you
+      # upgraded Vitest in package-lock (1.x vs 4.x), tests keep using the OLD vitest until
+      # you reinstall — that causes Rolldown + "type ApiRequestOptions" parse failures.
+      - name: Install dependencies (Linux Rolldown binding + npm install)
+        run: |
+          set -e
+          cd /home/auction-frontend
+          cp package.json package.json.bak
+          cp package-lock.json package-lock.json.bak
+          node - <<'NODE'
+          const fs = require('fs')
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          const winDep = pkg.devDependencies['@rolldown/binding-win32-x64-msvc']
+          if (!winDep) throw new Error('Missing @rolldown/binding-win32-x64-msvc in devDependencies')
+          delete pkg.devDependencies['@rolldown/binding-win32-x64-msvc']
+          pkg.devDependencies['@rolldown/binding-linux-x64-gnu'] = winDep
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2))
+          NODE
+          rm -rf node_modules
+          npm install
+          mv package.json.bak package.json
+          mv package-lock.json.bak package-lock.json
+
       - name: Run frontend tests
         run: |
           set -e
