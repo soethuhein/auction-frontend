@@ -60,6 +60,8 @@ jobs:
           cd /home/auction-frontend
           TARGET_DIR=/etc/nginx/html/bid
           sudo mkdir -p "$TARGET_DIR"
-          sudo rsync -a --delete dist/ "$TARGET_DIR"/
+          # Use cp (coreutils); many minimal CentOS images have no rsync installed.
+          sudo rm -rf "$TARGET_DIR"/*
+          sudo cp -a dist/. "$TARGET_DIR"/
           sudo systemctl reload nginx
 
