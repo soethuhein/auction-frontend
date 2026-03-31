@@ -19,10 +19,12 @@ import { ItemEditPage } from '../pages/ItemEditPage'
 import { CreateAuctionDraftPage } from '../pages/CreateAuctionDraftPage'
 import { MyBidsPage } from '../pages/MyBidsPage'
 import { ProfilePage } from '../pages/ProfilePage'
+import { AdminLayout } from '../pages/admin/AdminLayout'
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage'
 import { AdminItemsPage } from '../pages/admin/AdminItemsPage'
 import { AdminAuctionsPage } from '../pages/admin/AdminAuctionsPage'
 import { AdminBidsPage } from '../pages/admin/AdminBidsPage'
+import { AdminUsersPage } from '../pages/admin/AdminUsersPage'
 
 const rootRoute = createRootRoute({
   component: () => <RootLayout />,
@@ -133,28 +135,49 @@ export const itemEditRoute = createRoute({
   component: ItemEditPage,
 })
 
-// Admin (restricted to "my" data unless you add backend admin endpoints)
-export const adminRoute = createRoute({
+// Admin layout: sidebar + full-height shell for all /admin/* routes
+export const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
+  component: AdminLayout,
+})
+
+export const adminRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/',
   component: AdminDashboardPage,
 })
 
+export const adminUsersRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'users',
+  component: AdminUsersPage,
+})
+
 export const adminItemsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin/items',
+  getParentRoute: () => adminLayoutRoute,
+  path: 'items',
   component: AdminItemsPage,
 })
 
 export const adminAuctionsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin/auctions',
+  getParentRoute: () => adminLayoutRoute,
+  path: 'auctions',
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search?.q === 'string' ? search.q : undefined,
+    category: typeof search?.category === 'string' ? search.category : undefined,
+    status: typeof search?.status === 'string' ? search.status : undefined,
+    end_after: typeof search?.end_after === 'string' ? search.end_after : undefined,
+    end_before: typeof search?.end_before === 'string' ? search.end_before : undefined,
+    ordering: typeof search?.ordering === 'string' ? search.ordering : undefined,
+    page: parseBrowsePage(search?.page),
+  }),
   component: AdminAuctionsPage,
 })
 
 export const adminBidsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin/bids',
+  getParentRoute: () => adminLayoutRoute,
+  path: 'bids',
   component: AdminBidsPage,
 })
 
@@ -171,10 +194,13 @@ const routeTree = rootRoute.addChildren([
   itemsRoute,
   itemNewRoute,
   itemEditRoute,
-  adminRoute,
-  adminItemsRoute,
-  adminAuctionsRoute,
-  adminBidsRoute,
+  adminLayoutRoute.addChildren([
+    adminRoute,
+    adminUsersRoute,
+    adminItemsRoute,
+    adminAuctionsRoute,
+    adminBidsRoute,
+  ]),
 ])
 
 export const router = createRouter({

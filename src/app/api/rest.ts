@@ -35,6 +35,57 @@ export async function getMe(accessToken: string) {
   })
 }
 
+export type AdminStats = {
+  total_users: number
+  active_auctions: number
+  completed_auctions: number
+  bids_today: number
+  total_revenue: string
+  commission: string
+  commission_rate: number
+  pending_reports: number
+  pending_item_approvals: number
+}
+
+export async function getAdminStats(accessToken: string) {
+  return apiRequest<AdminStats>({
+    method: 'GET',
+    path: '/auth/admin/stats/',
+    token: accessToken,
+  })
+}
+
+export async function listAdminUsers(accessToken: string, page?: number) {
+  const sp = new URLSearchParams()
+  if (page != null && page > 1) sp.set('page', String(page))
+  const q = sp.toString()
+  return apiRequest<any>({
+    method: 'GET',
+    path: q ? `/auth/admin/users/?${q}` : '/auth/admin/users/',
+    token: accessToken,
+  })
+}
+
+export async function patchAdminUserActive(accessToken: string, userId: string, isActive: boolean) {
+  return apiRequest<any>({
+    method: 'PATCH',
+    path: `/auth/admin/users/${userId}/`,
+    token: accessToken,
+    body: { is_active: isActive },
+  })
+}
+
+export async function listAdminItems(accessToken: string, page?: number) {
+  const sp = new URLSearchParams()
+  if (page != null && page > 1) sp.set('page', String(page))
+  const q = sp.toString()
+  return apiRequest<any>({
+    method: 'GET',
+    path: q ? `/auth/admin/items/?${q}` : '/auth/admin/items/',
+    token: accessToken,
+  })
+}
+
 export async function listMyAuctions(accessToken: string) {
   return apiRequest<any>({
     method: 'GET',

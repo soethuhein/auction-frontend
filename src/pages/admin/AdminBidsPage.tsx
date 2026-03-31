@@ -49,12 +49,7 @@ export function AdminBidsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admin - Bids</h1>
-        <Link to="/admin" className="text-sm text-purple-700 hover:underline">
-          Back
-        </Link>
-      </div>
+      <h1 className="text-2xl font-semibold">Admin - Bids</h1>
 
       {error ? (
         <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200">

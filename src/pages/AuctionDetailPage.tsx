@@ -249,7 +249,10 @@ export function AuctionDetailPage() {
     return null
   })()
 
-  const canBid = auction?.status === 'active'
+  const canBid =
+    Boolean(accessToken) &&
+    auction?.status === 'active' &&
+    !auction?.is_seller
 
   async function onSubmitBid(e: React.FormEvent) {
     e.preventDefault()
@@ -545,6 +548,22 @@ export function AuctionDetailPage() {
                   Place bid
                 </button>
               </form>
+            ) : accessToken &&
+              auction?.status === 'active' &&
+              auction?.is_seller ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                You are the seller for this auction. You cannot place bids on your own listing.
+              </p>
+            ) : !accessToken && auction?.status === 'active' ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <Link
+                  to="/auth/login"
+                  className="font-medium text-purple-700 hover:underline dark:text-purple-300"
+                >
+                  Log in
+                </Link>{' '}
+                to place a bid.
+              </p>
             ) : (
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Bidding is available only when status is <span className="font-semibold">active</span>.

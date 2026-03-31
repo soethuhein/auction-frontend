@@ -272,6 +272,62 @@ export function DashboardPage() {
               </div>
             </section>
           ) : null}
+
+          <section aria-label="Why BidSphere" className="space-y-4">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
+              Why <span className="text-blue-600 dark:text-blue-400">BidSphere</span>?
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M4 7h16M7 4v6M17 4v6M5 11h14v9H5z" />
+                  </svg>
+                </span>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Discover unique lots</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Browse rare and trending items from trusted sellers in one place.
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M3 7h18M8 12h8M10 17h4" />
+                  </svg>
+                </span>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Transparent bidding</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  See live prices and auction timing updates in real time as bids come in.
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z" />
+                  </svg>
+                </span>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Buyer protection</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Built-in account checks and clear auction rules to keep bidding safer.
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M16 11a4 4 0 10-8 0 4 4 0 008 0z" />
+                    <path d="M3 20a7 7 0 0118 0" />
+                  </svg>
+                </span>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Growing community</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Join active bidders and sellers discovering deals every day on BidSphere.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       )}
     </div>

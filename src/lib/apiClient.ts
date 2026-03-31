@@ -71,6 +71,41 @@ async function safeReadText(res: Response): Promise<string> {
   }
 }
 
+const BANNED_ACCOUNT_MESSAGE =
+  'This user account has been banned by an administrator.'
+
+function parseApiErrorJson(text: string): { code?: string; detail?: unknown } | null {
+  try {
+    const o = JSON.parse(text) as unknown
+    if (o && typeof o === 'object' && !Array.isArray(o)) {
+      return o as { code?: string; detail?: unknown }
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+/** Maps known API error payloads to user-facing copy; otherwise returns null. */
+export function userFacingApiErrorMessage(status: number, bodyText: string): string | null {
+  const parsed = parseApiErrorJson(bodyText)
+  if (!parsed) return null
+  if (parsed.code === 'user_inactive') return BANNED_ACCOUNT_MESSAGE
+  if (status === 401 && typeof parsed.detail === 'string') {
+    const d = parsed.detail.toLowerCase()
+    if (d.includes('inactive') || d.includes('not active')) {
+      return BANNED_ACCOUNT_MESSAGE
+    }
+  }
+  return null
+}
+
+function throwApiError(status: number, text: string): never {
+  const friendly = userFacingApiErrorMessage(status, text)
+  if (friendly) throw new Error(friendly)
+  throw new Error(`API error ${status}: ${text}`)
+}
+
 function isTokenExpiredError(status: number, text: string): boolean {
   if (status !== 401) return false
   const hay = String(text || '')
@@ -88,7 +123,7 @@ async function refreshAccessToken(refresh: string): Promise<{ access?: string; r
   })
   if (!res.ok) {
     const text = await safeReadText(res)
-    throw new Error(`API error ${res.status}: ${text}`)
+    throwApiError(res.status, text)
   }
   return (await res.json()) as { access?: string; refresh?: string }
 }
@@ -123,7 +158,7 @@ export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
         setStoredToken(ACCESS_TOKEN_KEY, null)
         setStoredToken(REFRESH_TOKEN_KEY, null)
         notifyAuthClear()
-        throw new Error(`API error ${res.status}: ${text}`)
+        throwApiError(res.status, text)
       }
 
       try {
@@ -149,7 +184,7 @@ export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
       }
     }
 
-    throw new Error(`API error ${res.status}: ${text}`)
+    throwApiError(res.status, text)
   }
 
   return (await res.json()) as T
