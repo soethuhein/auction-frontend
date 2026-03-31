@@ -1,4 +1,4 @@
-import { buildAuthHeaders, apiRequest } from '../apiClient.js'
+import { buildAuthHeaders, apiRequest } from '../apiClient'
 import { vi } from 'vitest'
 
 describe('apiClient', () => {
