@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
 import { getMe } from './api/rest'
+import { SiteFooter } from '../components/SiteFooter'
 import { AuthStatusBar } from './auth/AuthStatusBar'
 import { useAuth } from './auth/AuthContext'
 import { DEFAULT_BROWSE_SEARCH } from './browseSearchDefaults'
@@ -45,7 +46,7 @@ export function RootLayout() {
   }, [accessToken])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/90">
 
         {/* Top bar */}
@@ -150,9 +151,11 @@ export function RootLayout() {
         )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <Outlet />
       </main>
+
+      <SiteFooter />
     </div>
   )
 }
