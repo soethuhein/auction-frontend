@@ -4,6 +4,7 @@ import { useAuth } from '../app/auth/AuthContext'
 import { auctionDetailRoute } from '../app/router'
 import {
   addToWatchlist,
+  cancelAdminAuction,
   getAuction,
   getMe,
   placeBid,
@@ -31,7 +32,7 @@ type WsAuctionStartedEvent = {
 type WsAuctionEndedEvent = {
   type: 'auction_ended'
   auction_id: string
-  status: 'ended'
+  status?: string
 }
 
 type WsViewerCountUpdateEvent = {
@@ -64,6 +65,20 @@ function formatPrice(value: string | number | null | undefined): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function formatSellerLabel(
+  seller: { first_name?: string; username?: string } | null | undefined,
+): string {
+  if (!seller) return '—'
+  const name = seller.first_name?.trim()
+  return name || seller.username || '—'
+}
+
+const DETAIL_ADMIN_CANCELLABLE = ['draft', 'scheduled', 'active']
+
+function detailAuctionCanBeCancelledByAdmin(status: string | undefined) {
+  return Boolean(status && DETAIL_ADMIN_CANCELLABLE.includes(status))
+}
+
 export function AuctionDetailPage() {
   const { accessToken } = useAuth()
   const { auctionId } = auctionDetailRoute.useParams()
@@ -93,19 +108,28 @@ export function AuctionDetailPage() {
   const [startError, setStartError] = useState<string | null>(null)
   const [startBusy, setStartBusy] = useState(false)
   const [meUserId, setMeUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminCancelBusy, setAdminCancelBusy] = useState(false)
 
   useEffect(() => {
     if (!accessToken) {
       setMeUserId(null)
+      setIsAdmin(false)
       return
     }
     let mounted = true
     ;(async () => {
       try {
         const me = await getMe(accessToken)
-        if (mounted && me?.id != null) setMeUserId(String(me.id))
+        if (mounted) {
+          setMeUserId(me?.id != null ? String(me.id) : null)
+          setIsAdmin(Boolean(me?.is_superuser || me?.is_staff))
+        }
       } catch {
-        if (mounted) setMeUserId(null)
+        if (mounted) {
+          setMeUserId(null)
+          setIsAdmin(false)
+        }
       }
     })()
     return () => {
@@ -190,12 +214,13 @@ export function AuctionDetailPage() {
         }
 
         if (event.type === 'auction_ended') {
+          const nextStatus = event.status === 'cancelled' ? 'cancelled' : 'ended'
           void getAuction(accessToken, auctionId)
             .then((res) => setAuction(res))
             .catch(() => {
               setAuction((prev: any) => {
                 if (!prev) return prev
-                return { ...prev, status: 'ended' }
+                return { ...prev, status: nextStatus }
               })
             })
         }
@@ -345,7 +370,32 @@ export function AuctionDetailPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {accessToken &&
+          isAdmin &&
+          detailAuctionCanBeCancelledByAdmin(auction.status) ? (
+            <button
+              type="button"
+              disabled={adminCancelBusy}
+              className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/60"
+              onClick={async () => {
+                if (!accessToken) return
+                if (!window.confirm('Cancel this auction for all users? It cannot be re-opened.')) return
+                setAdminCancelBusy(true)
+                setError(null)
+                try {
+                  const res = await cancelAdminAuction(accessToken, auctionId)
+                  setAuction(res)
+                } catch (e: any) {
+                  setError(e?.message ?? 'Failed to cancel auction')
+                } finally {
+                  setAdminCancelBusy(false)
+                }
+              }}
+            >
+              {adminCancelBusy ? 'Cancelling…' : 'Cancel auction'}
+            </button>
+          ) : null}
           {accessToken ? (
             <button
               type="button"
@@ -388,6 +438,18 @@ export function AuctionDetailPage() {
         <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200">
           {error}
         </div>
+      ) : null}
+
+      {auction.status === 'cancelled' ? (
+        <section
+          className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40"
+          aria-live="polite"
+        >
+          <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-100">Auction cancelled</h2>
+          <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+            This listing was cancelled and is no longer accepting bids.
+          </p>
+        </section>
       ) : null}
 
       {auction.status === 'ended' ? (
@@ -496,6 +558,11 @@ export function AuctionDetailPage() {
           <section className="space-y-3 rounded border border-gray-200 p-4 dark:border-gray-800">
             <h2 className="text-lg font-semibold">Auction</h2>
             <div className="text-sm text-gray-700 dark:text-gray-300">
+              Seller:{' '}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {formatSellerLabel(auction.seller)}
+              </span>
+              <br />
               Start:{' '}
               {auction.start_time
                 ? new Date(auction.start_time).toLocaleString()
@@ -564,6 +631,8 @@ export function AuctionDetailPage() {
                 </Link>{' '}
                 to place a bid.
               </p>
+            ) : auction?.status === 'cancelled' ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">This auction was cancelled.</p>
             ) : (
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Bidding is available only when status is <span className="font-semibold">active</span>.

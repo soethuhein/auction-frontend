@@ -86,10 +86,29 @@ export async function listAdminItems(accessToken: string, page?: number) {
   })
 }
 
+export async function cancelAdminAuction(accessToken: string, auctionId: string) {
+  return apiRequest<any>({
+    method: 'POST',
+    path: `/auth/admin/auctions/${auctionId}/cancel/`,
+    token: accessToken,
+  })
+}
+
 export async function listMyAuctions(accessToken: string) {
   return apiRequest<any>({
     method: 'GET',
     path: '/auth/me/auctions/',
+    token: accessToken,
+  })
+}
+
+export async function listAdminBids(accessToken: string, page?: number) {
+  const sp = new URLSearchParams()
+  if (page != null && page > 1) sp.set('page', String(page))
+  const q = sp.toString()
+  return apiRequest<any>({
+    method: 'GET',
+    path: q ? `/auth/admin/bids/?${q}` : '/auth/admin/bids/',
     token: accessToken,
   })
 }

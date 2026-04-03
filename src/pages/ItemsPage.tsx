@@ -63,6 +63,7 @@ export function ItemsPage() {
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th className="p-3">Title</th>
+              <th className="p-3">Category</th>
               <th className="p-3">Type</th>
               <th className="p-3">Images</th>
               <th className="p-3">Actions</th>
@@ -75,6 +76,9 @@ export function ItemsPage() {
                 className="border-t border-gray-200 dark:border-gray-800"
               >
                 <td className="p-3 font-medium">{it.title}</td>
+                <td className="p-3 text-gray-700 dark:text-gray-300">
+                  {it.category?.name ?? '—'}
+                </td>
                 <td className="p-3">{it.item_type}</td>
                 <td className="p-3">{it.images?.length ?? 0}</td>
                 <td className="p-3">
@@ -90,7 +94,7 @@ export function ItemsPage() {
             ))}
             {items.length === 0 ? (
               <tr>
-                <td className="p-4 text-gray-600 dark:text-gray-400" colSpan={4}>
+                <td className="p-4 text-gray-600 dark:text-gray-400" colSpan={5}>
                   No items yet.
                 </td>
               </tr>

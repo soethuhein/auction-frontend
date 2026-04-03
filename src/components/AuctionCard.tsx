@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Card } from './Card'
 
@@ -63,8 +63,8 @@ function getStatusBadge(statusRaw: unknown): {
   }
 }
 
-export function AuctionCard(props: { auction: any }) {
-  const { auction } = props
+export function AuctionCard(props: { auction: any; footer?: ReactNode }) {
+  const { auction, footer } = props
   const startLabel =
     auction?.start_time ? new Date(auction.start_time).toLocaleString() : '—'
   const endLabel =
@@ -138,6 +138,10 @@ export function AuctionCard(props: { auction: any }) {
           <span className="font-medium">{isScheduled ? startLabel : endLabel}</span>
         </div>
       </div>
+
+      {footer ? (
+        <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-800">{footer}</div>
+      ) : null}
     </Card>
   )
 }
