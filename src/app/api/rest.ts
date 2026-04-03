@@ -94,6 +94,58 @@ export async function cancelAdminAuction(accessToken: string, auctionId: string)
   })
 }
 
+export async function getAdminItem(accessToken: string, itemId: string) {
+  return apiRequest<any>({
+    method: 'GET',
+    path: `/auth/admin/items/${itemId}/`,
+    token: accessToken,
+  })
+}
+
+export async function updateAdminItem(accessToken: string, itemId: string, payload: any) {
+  return apiRequest<any>({
+    method: 'PATCH',
+    path: `/auth/admin/items/${itemId}/`,
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export async function listAdminItemImages(accessToken: string, itemId: string) {
+  return apiRequest<any[]>({
+    method: 'GET',
+    path: `/auth/admin/items/${itemId}/images/`,
+    token: accessToken,
+  })
+}
+
+export async function uploadAdminItemImage(
+  accessToken: string,
+  itemId: string,
+  file: File,
+  meta?: { alt_text?: string; sort_order?: number },
+) {
+  const form = new FormData()
+  form.append('image', file)
+  if (meta?.alt_text !== undefined) form.append('alt_text', meta.alt_text)
+  if (meta?.sort_order !== undefined) form.append('sort_order', String(meta.sort_order))
+
+  return apiRequest<any>({
+    method: 'POST',
+    path: `/auth/admin/items/${itemId}/upload_image/`,
+    token: accessToken,
+    body: form,
+  })
+}
+
+export async function deleteAdminItemImage(accessToken: string, itemId: string, imageId: string) {
+  return apiRequest<any>({
+    method: 'DELETE',
+    path: `/auth/admin/items/${itemId}/images/${imageId}/`,
+    token: accessToken,
+  })
+}
+
 export async function listMyAuctions(accessToken: string) {
   return apiRequest<any>({
     method: 'GET',

@@ -21,6 +21,7 @@ import { MyBidsPage } from '../pages/MyBidsPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { AdminLayout } from '../pages/admin/AdminLayout'
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage'
+import { AdminItemEditPage } from '../pages/admin/AdminItemEditPage'
 import { AdminItemsPage } from '../pages/admin/AdminItemsPage'
 import { AdminAuctionsPage } from '../pages/admin/AdminAuctionsPage'
 import { AdminBidsPage } from '../pages/admin/AdminBidsPage'
@@ -154,6 +155,13 @@ export const adminUsersRoute = createRoute({
   component: AdminUsersPage,
 })
 
+/** Registered before `items` so `/admin/items/:id` is not swallowed by the list route. */
+export const adminItemEditRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: 'items/$itemId',
+  component: AdminItemEditPage,
+})
+
 export const adminItemsRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: 'items',
@@ -197,6 +205,7 @@ const routeTree = rootRoute.addChildren([
   adminLayoutRoute.addChildren([
     adminRoute,
     adminUsersRoute,
+    adminItemEditRoute,
     adminItemsRoute,
     adminAuctionsRoute,
     adminBidsRoute,

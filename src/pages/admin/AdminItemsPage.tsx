@@ -102,7 +102,7 @@ export function AdminItemsPage() {
               <th className="p-3">Title</th>
               <th className="p-3">Owner</th>
               <th className="p-3">Type</th>
-              <th className="p-3">Images</th>
+              <th className="p-3">Category</th>
               <th className="p-3">Edit</th>
             </tr>
           </thead>
@@ -112,10 +112,12 @@ export function AdminItemsPage() {
                 <td className="p-3 font-medium">{it.title}</td>
                 <td className="p-3 text-gray-800 dark:text-gray-200">{ownerLabel(it.owner)}</td>
                 <td className="p-3">{it.item_type}</td>
-                <td className="p-3">{it.images?.length ?? 0}</td>
+                <td className="p-3 text-gray-800 dark:text-gray-200">
+                  {it.category?.name ?? '—'}
+                </td>
                 <td className="p-3">
                   <Link
-                    to="/items/$itemId"
+                    to="/admin/items/$itemId"
                     params={{ itemId: it.id }}
                     className="text-sm text-purple-700 hover:underline dark:text-purple-300"
                   >
