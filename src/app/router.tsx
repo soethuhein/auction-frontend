@@ -189,7 +189,8 @@ export const adminBidsRoute = createRoute({
   component: AdminBidsPage,
 })
 
-const routeTree = rootRoute.addChildren([
+/** Exported for tests that build a router with `createMemoryHistory`. */
+export const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
