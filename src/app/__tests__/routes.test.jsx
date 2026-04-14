@@ -106,10 +106,25 @@ describe('App routes (smoke)', () => {
   })
 
   it('renders browse at /auctions/browse', async () => {
+    vi.mocked(rest.listAuctions).mockResolvedValue({
+      results: [],
+      count: 41,
+    })
     renderRoute('/auctions/browse')
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Browse auctions/i })).toBeInTheDocument()
     })
+    expect(screen.getByLabelText(/search/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/category/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/status/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/ends after/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/ends before/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/sort/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /apply filters/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument()
+    expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /previous/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /next/i })).toBeInTheDocument()
   })
 
   it('renders auction detail at /auctions/:auctionId', async () => {
